@@ -58,6 +58,82 @@ This project loads React directly via CDN scripts — no bundler needed:
 
 The `<div id="root">not rendered</div>` acts as the mount point — its content gets replaced once React renders.
 
+## Tooling — ESLint & Prettier
+
+- **Prettier** handles code **formatting** (indentation, line length, semicolons, etc.).
+- **ESLint** handles code **quality** (catching bugs, unused variables, bad patterns, etc.).
+- They are kept separate because they serve different purposes, but `eslint-config-prettier` is used to **turn off ESLint rules that conflict with Prettier** so the two don't fight.
+- ESLint uses the **flat config** format (`eslint.config.mjs`):
+  ```js
+  import js from "@eslint/js";
+  import prettier from "eslint-config-prettier";
+  import globals from "globals";
+
+  export default [
+      js.configs.recommended,  // sensible default rules
+      prettier,                // disable formatting rules that clash with Prettier
+      {
+          files: ["**/*.js", "**/*.jsx"],
+          languageOptions: {
+              globals: { ...globals.browser, ...globals.node },
+              parserOptions: { ecmaFeatures: { jsx: true } },
+          },
+      },
+  ];
+  ```
+- npm scripts for tooling:
+  - `npm run format` — runs Prettier on all source files
+  - `npm run lint` — runs ESLint on the project
+
 ## React vs MVC
 
 When React was created, the **MVC (Model-View-Controller)** pattern was dominant — logic, data, and presentation were kept in separate files/layers. React took a different approach: it **co-locates everything related to a component** (markup, logic, and eventually styling) in one place. The idea is that a component owns its entire UI concern, making it easier to reason about and maintain.
+
+## Imports — Default vs Named
+
+- **Default imports** (no curly braces) import the entire default export of a module:
+  ```js
+  import React from "react";
+  ```
+- **Named imports** (with curly braces) import specific exports from a module:
+  ```js
+  import { createRoot } from "react-dom/client";
+  ```
+- Vite handles resolving these imports — it connects the `import` statement to the actual library code at build time.
+
+## Vite
+
+- **Vite** is a modern build tool and dev server for frontend projects.
+- By default, Vite looks for `index.html` in the project root. It crawls all linked HTML, CSS, and JS files from there to build the project.
+- The **`@vitejs/plugin-react`** plugin adds React-specific support (Fast Refresh, JSX transform, etc.).
+- Vite config (`vite.config.js`):
+  ```js
+  import { defineConfig } from "vite";
+  import react from "@vitejs/plugin-react";
+
+  export default defineConfig({
+      plugins: [react()],
+  });
+  ```
+
+## npm Scripts (package.json)
+
+| Script          | Command         | Purpose                                                                 |
+| --------------- | --------------- | ----------------------------------------------------------------------- |
+| `npm run dev`   | `vite`          | Starts the development server (typically at `http://localhost:5173/`)    |
+| `npm run build` | `vite build`    | Bundles static files for production deployment (GitHub Pages, Vercel, Netlify, AWS S3, etc.) |
+| `npm run preview` | `vite preview` | Lets you preview the production build locally before deploying          |
+| `npm run format` | `prettier --write "src/**/*.{js,jsx,css}"` | Formats all source files with Prettier |
+| `npm run lint`  | `eslint`        | Runs ESLint on the project                                              |
+
+## Dependencies vs Dev Dependencies
+
+- **Dependencies** (`--save` / default) are packages needed at **runtime** — they ship with your app:
+  ```
+  react, react-dom
+  ```
+- **Dev dependencies** (`--save-dev` / `-D`) are only needed during **development** — build tools, linters, formatters:
+  ```
+  vite, eslint, prettier, @vitejs/plugin-react
+  ```
+- React is **not** installed with `-D` because it's required at runtime, not just during development.

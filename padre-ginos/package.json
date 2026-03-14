@@ -6,17 +6,26 @@
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "format": "prettier --write \"src/**/*.{js,jsx,css}\"",
-        "lint": "eslint"
+        "lint": "eslint",
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
-    "type": "commonjs",
+    "type": "module",
     "devDependencies": {
         "@eslint/js": "^10.0.1",
+        "@vitejs/plugin-react": "^6.0.1",
         "eslint": "^10.0.3",
         "eslint-config-prettier": "^10.1.8",
         "globals": "^17.4.0",
-        "prettier": "^3.8.1"
+        "prettier": "^3.8.1",
+        "vite": "^8.0.0"
+    },
+    "dependencies": {
+        "react": "^19.2.4",
+        "react-dom": "^19.2.4"
     }
 }
