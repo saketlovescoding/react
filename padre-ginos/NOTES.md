@@ -137,3 +137,53 @@ When React was created, the **MVC (Model-View-Controller)** pattern was dominant
   vite, eslint, prettier, @vitejs/plugin-react
   ```
 - React is **not** installed with `-D` because it's required at runtime, not just during development.
+
+## JSX
+
+- **JSX** is HTML-like syntax written directly inside JavaScript. It's syntactic sugar over `React.createElement()` calls.
+- Instead of writing:
+  ```js
+  React.createElement("div", {}, [
+      React.createElement("h1", {}, props.name),
+      React.createElement("p", {}, props.description),
+  ]);
+  ```
+  You can write:
+  ```jsx
+  <div>
+      <h1>{props.name}</h1>
+      <p>{props.description}</p>
+  </div>
+  ```
+- JSX uses `{}` (curly braces) to embed **JavaScript expressions** — variables, props, function calls, etc.
+- JSX uses `className` instead of `class` (since `class` is a reserved word in JavaScript):
+  ```jsx
+  <div className="pizza">
+  ```
+- In modern development, you **don't need to import React** just to write JSX — build tools like Vite (via `@vitejs/plugin-react`) handle the transformation automatically.
+- JSX files typically use the **`.jsx`** extension to signal that they contain JSX syntax.
+
+## Separating Components into Files
+
+- Each component should live in its **own file** — this keeps the codebase organized and components reusable.
+- A component file exports the component so other files can import it:
+  ```jsx
+  // Pizza.jsx
+  const Pizza = (props) => {
+      return (
+          <div className="pizza">
+              <h1>{props.name}</h1>
+              <p>{props.description}</p>
+          </div>
+      );
+  };
+
+  export default Pizza;
+  ```
+- The parent file imports and uses it:
+  ```js
+  // App.js
+  import Pizza from "./Pizza";
+  ```
+- **Default export** (`export default Pizza`) means you import it **without** curly braces — one default export per file.
+- **Named exports** (`export { Pizza }`) use curly braces on import — you can have **multiple** named exports per file.
