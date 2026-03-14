@@ -22,6 +22,12 @@
   };
   ```
 - Props are **read-only** — a component should never modify its own props.
+- Every instance of a component can receive **different props**, making components reusable:
+  ```js
+  React.createElement(Pizza, { name: "Pepperoni Pizza", description: "Some Pepper" }),
+  React.createElement(Pizza, { name: "The Havanaa Pizza", description: "hawaian toppings" }),
+  ```
+  Same `Pizza` component, two different outputs — that's the power of props.
 
 ## Rendering to the DOM
 
@@ -51,3 +57,7 @@ This project loads React directly via CDN scripts — no bundler needed:
 ```
 
 The `<div id="root">not rendered</div>` acts as the mount point — its content gets replaced once React renders.
+
+## React vs MVC
+
+When React was created, the **MVC (Model-View-Controller)** pattern was dominant — logic, data, and presentation were kept in separate files/layers. React took a different approach: it **co-locates everything related to a component** (markup, logic, and eventually styling) in one place. The idea is that a component owns its entire UI concern, making it easier to reason about and maintain.

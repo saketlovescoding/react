@@ -12,9 +12,12 @@ const App = () => {
         React.createElement("h1", {}, "Pixel Perfect Pizzas"),
         React.createElement(Pizza, {
             name: "Pepperoni Pizza",
-            description: "Some Pepper"
+            description: "Some Pepper",
         }),
-        React.createElement(Pizza),
+        React.createElement(Pizza, {
+            name: "The Havanaa Pizza",
+            description: "hawaian toppings",
+        }),
     ]);
 };
 
@@ -36,3 +39,5 @@ root.render(React.createElement(App));
 
 // ReactDOM is the library that connects React with the browser's DOM
 // It takes the UI description from React and renders it into actual HTML elements in the browser.
+
+// When react was born, MVC was very common. But React took everything and put it at the same place
