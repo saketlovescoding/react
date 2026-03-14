@@ -5,13 +5,18 @@
     "main": "index.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
-        "format": "prettier --write \"src/**/*.{js,jsx,css}\""
+        "format": "prettier --write \"src/**/*.{js,jsx,css}\"",
+        "lint": "eslint"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
     "type": "commonjs",
     "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "eslint": "^10.0.3",
+        "eslint-config-prettier": "^10.1.8",
+        "globals": "^17.4.0",
         "prettier": "^3.8.1"
     }
 }
