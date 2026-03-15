@@ -63,24 +63,36 @@ The `<div id="root">not rendered</div>` acts as the mount point — its content 
 - **Prettier** handles code **formatting** (indentation, line length, semicolons, etc.).
 - **ESLint** handles code **quality** (catching bugs, unused variables, bad patterns, etc.).
 - They are kept separate because they serve different purposes, but `eslint-config-prettier` is used to **turn off ESLint rules that conflict with Prettier** so the two don't fight.
+- **`eslint-plugin-react`** adds React-specific linting rules (e.g., checking JSX syntax, prop usage, hooks rules).
 - ESLint uses the **flat config** format (`eslint.config.mjs`):
   ```js
   import js from "@eslint/js";
   import prettier from "eslint-config-prettier";
+  import reactPlugin from "eslint-plugin-react";
   import globals from "globals";
 
   export default [
-      js.configs.recommended,  // sensible default rules
-      prettier,                // disable formatting rules that clash with Prettier
+      js.configs.recommended,           // sensible default rules
+      prettier,                         // disable formatting rules that clash with Prettier
       {
-          files: ["**/*.js", "**/*.jsx"],
+          ...reactPlugin.configs.flat.recommended,  // recommended React rules
+          settings: { react: { version: "detect" } },  // auto-detect React version
+      },
+      reactPlugin.configs.flat["jsx-runtime"],  // disables rules requiring React import (not needed with new JSX transform)
+      {
+          files: ["**/*.js", "**/*.jsx", "**/*.tsx"],
           languageOptions: {
               globals: { ...globals.browser, ...globals.node },
               parserOptions: { ecmaFeatures: { jsx: true } },
           },
+          rules: {
+              "react/prop-types": "off",               // we're not using PropTypes
+              "react/no-unescaped-entities": "off",     // allow ' and " in JSX text
+          },
       },
   ];
   ```
+- **`jsx-runtime`** config is important — it tells ESLint that we're using the **new JSX transform** (React 17+), so we don't need `import React from "react"` at the top of every file.
 - npm scripts for tooling:
   - `npm run format` — runs Prettier on all source files
   - `npm run lint` — runs ESLint on the project
@@ -108,13 +120,33 @@ When React was created, the **MVC (Model-View-Controller)** pattern was dominant
 - The **`@vitejs/plugin-react`** plugin adds React-specific support (Fast Refresh, JSX transform, etc.).
 - Vite config (`vite.config.js`):
   ```js
-  import { defineConfig } from "vite";
   import react from "@vitejs/plugin-react";
+  import { defineConfig } from "vite";
 
   export default defineConfig({
+      server: {
+          proxy: {
+              "/api": {
+                  target: "http://localhost:3000",
+                  changeOrigin: true,
+              },
+              "/public": {
+                  target: "http://localhost:3000",
+                  changeOrigin: true,
+              },
+          },
+      },
       plugins: [react()],
   });
   ```
+
+### Vite Proxy
+
+- A **proxy** is a middleman that forwards requests on your behalf.
+- The Vite dev server acts as a proxy: when the browser makes a request to `/api` or `/public`, Vite intercepts it and **forwards it to the backend** at `http://localhost:3000`.
+- This makes both frontend and backend appear to be on the **same origin** (same host and port), which avoids **CORS** (Cross-Origin Resource Sharing) issues.
+- **CORS** is a browser security feature that blocks requests from one origin (e.g., `localhost:5173`) to a different origin (e.g., `localhost:3000`). The proxy sidesteps this entirely because, from the browser's perspective, all requests go to `localhost:5173`.
+- `changeOrigin: true` updates the `Host` header in the proxied request to match the target, which some backend servers require.
 
 ## npm Scripts (package.json)
 
@@ -156,10 +188,11 @@ When React was created, the **MVC (Model-View-Controller)** pattern was dominant
   </div>
   ```
 - JSX uses `{}` (curly braces) to embed **JavaScript expressions** — variables, props, function calls, etc.
-- JSX uses `className` instead of `class` (since `class` is a reserved word in JavaScript):
+- JSX uses `className` instead of `class` (since `class` is a **reserved keyword** in JavaScript — it's used to define ES6 classes):
   ```jsx
   <div className="pizza">
   ```
+- **All JSX tags must be closed** — unlike HTML where some tags are self-closing (e.g., `<img>`, `<br>`), in JSX you must explicitly close them (e.g., `<img />`, `<br />`).
 - In modern development, you **don't need to import React** just to write JSX — build tools like Vite (via `@vitejs/plugin-react`) handle the transformation automatically.
 - JSX files typically use the **`.jsx`** extension to signal that they contain JSX syntax.
 

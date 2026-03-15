@@ -27,3 +27,6 @@ export default Pizza
 // In modern development we don't need to import react to write jsx, tools do it for us
 
 
+// class cannot be used in jsx because class is reserved in js.
+// all the tags have to have closing tag
+
