@@ -237,3 +237,73 @@ When React was created, the **MVC (Model-View-Controller)** pattern was dominant
   ```
 - **Default export** (`export default Pizza`) means you import it **without** curly braces — one default export per file.
 - **Named exports** (`export { Pizza }`) use curly braces on import — you can have **multiple** named exports per file.
+
+## React Hooks
+
+- **Hooks** are special functions that let you "hook into" React features like **state** and **side effects** from functional components.
+- Before hooks (React 16.8), you needed class components to use state or lifecycle methods. Hooks make functional components fully capable.
+- Common hooks:
+  - **`useState`** — adds local state to a component
+  - **`useEffect`** — runs side effects (data fetching, subscriptions, DOM manipulation) after render
+  - **`useRef`** — holds a mutable value that persists across renders without triggering re-renders
+  - **`useContext`** — accesses shared data without prop drilling
+- **Rules of Hooks:**
+  1. Only call hooks at the **top level** of a component (not inside loops, conditions, or nested functions).
+  2. Only call hooks from **React function components** or **custom hooks**.
+
+## Form State Management in React
+
+- The common pattern for managing form state in React is using **state variables to track form input values** — this is called a **controlled component**.
+- In a controlled component, the form input's value is driven by React state, and every change is handled by a state updater function. This gives React full control over the form data.
+- Example:
+  ```jsx
+  import { useState } from "react";
+
+  export default function OrderForm() {
+      const [pizzaType, setPizzaType] = useState("pepperoni");
+      const [pizzaSize, setPizzaSize] = useState("M");
+
+      return (
+          <form>
+              <label htmlFor="pizza-type">Pizza Type</label>
+              <select
+                  name="pizza-type"
+                  value={pizzaType}
+                  onChange={(e) => setPizzaType(e.target.value)}
+              >
+                  <option value="pepperoni">Pepperoni</option>
+                  <option value="margherita">Margherita</option>
+                  <option value="veggie-delight">Veggie Delight</option>
+              </select>
+
+              <label htmlFor="pizza-size">Pizza Size</label>
+              <input
+                  type="radio"
+                  name="pizza-size"
+                  value="S"
+                  checked={pizzaSize === "S"}
+                  onChange={(e) => setPizzaSize(e.target.value)}
+              /> Small
+              <input
+                  type="radio"
+                  name="pizza-size"
+                  value="M"
+                  checked={pizzaSize === "M"}
+                  onChange={(e) => setPizzaSize(e.target.value)}
+              /> Medium
+              <input
+                  type="radio"
+                  name="pizza-size"
+                  value="L"
+                  checked={pizzaSize === "L"}
+                  onChange={(e) => setPizzaSize(e.target.value)}
+              /> Large
+          </form>
+      );
+  }
+  ```
+- **Key points:**
+  - `value={pizzaType}` binds the input to state — React is the **single source of truth**.
+  - `onChange={(e) => setPizzaType(e.target.value)}` updates state on every keystroke/selection, which triggers a re-render with the new value.
+  - Without `onChange`, the input becomes **read-only** because React won't let the DOM value diverge from state.
+  - This pattern applies to all form elements: `<input>`, `<select>`, `<textarea>`, and radio buttons.

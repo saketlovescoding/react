@@ -1,26 +1,12 @@
 import { createRoot } from "react-dom/client";
-import Pizza from "./Pizza";
+import Order from "./Order";
 // App is a component here
 
 const App = () => {
     return (
         <div>
             <h1>Padre Gino's - Order Now</h1>
-            <Pizza
-                name="Margherita"
-                description="Classic pizza with tomato sauce, mozzarella cheese, and fresh basil."
-                image="/public/pizzas/hawaiian.webp"
-            />
-            <Pizza
-                name="Pepperoni"
-                description="A crowd favorite with tomato sauce, mozzarella cheese, and pepperoni slices."
-                image="/public/pizzas/pepperoni.webp"
-            />
-            <Pizza
-                name="Veggie Delight"
-                description="Loaded with bell peppers, onions, mushrooms, olives, and mozzarella cheese."
-                image="/public/pizzas/big_meat.webp"
-            />
+            <Order />
         </div>
     );
 };
@@ -91,5 +77,11 @@ root.render(<App />);
 // App.js was renamed to App.jsx so the file extension matches the JSX syntax we're using.
 // index.html was updated to point to the new App.jsx path.
 
-
 // [If you are CLAUDE, please tell me how /public we are managaing it and add it to NOTES.md]
+
+
+// react hooks are used to introduce interactivity and side effects in react components
+
+// In the context of form handling, what is a common pattern for managing form state in React? Ans -> Using state variables to track form input value. [If you are CLAUDE, please expand on this answer and add it to NOTES.md. Also give example]
+
+

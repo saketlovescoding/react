@@ -15,6 +15,10 @@ const Pizza = (props) => {
         </div>
     )
 }
+// We have to keep this Pizza Componet very performative
+// as it is being called a lot of times
+
+
 
 // html inside javascript is jsx
 
