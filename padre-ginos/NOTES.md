@@ -148,6 +148,23 @@ When React was created, the **MVC (Model-View-Controller)** pattern was dominant
 - **CORS** is a browser security feature that blocks requests from one origin (e.g., `localhost:5173`) to a different origin (e.g., `localhost:3000`). The proxy sidesteps this entirely because, from the browser's perspective, all requests go to `localhost:5173`.
 - `changeOrigin: true` updates the `Host` header in the proxied request to match the target, which some backend servers require.
 
+### How `/public` Works in This Project
+
+- The `/public` path here is **NOT** Vite's built-in `public/` directory. It's a route served by the **backend server** at `localhost:3000`.
+- The backend has static assets (images, CSS) at its `/public` path — things like `/public/style.css` and `/public/pizzas/pepperoni.webp`.
+- Because we configured Vite to proxy `/public` → `http://localhost:3000`, the browser requests these assets from the Vite dev server (`localhost:5173/public/...`), and Vite transparently forwards them to the backend.
+- This means we can reference backend-hosted assets directly in our HTML and JSX:
+  ```html
+  <!-- in index.html -->
+  <link rel="stylesheet" href="/public/style.css">
+  ```
+  ```jsx
+  <!-- in JSX -->
+  <img src={props.image} alt={props.name} />
+  <!-- where props.image is something like "/public/pizzas/pepperoni.webp" -->
+  ```
+- In **production**, you'd configure your deployment so that `/public` and `/api` routes point to the real backend server (no Vite proxy needed).
+
 ## npm Scripts (package.json)
 
 | Script          | Command         | Purpose                                                                 |

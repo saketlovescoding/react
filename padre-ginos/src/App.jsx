@@ -9,14 +9,17 @@ const App = () => {
             <Pizza
                 name="Margherita"
                 description="Classic pizza with tomato sauce, mozzarella cheese, and fresh basil."
+                image="/public/pizzas/hawaiian.webp"
             />
             <Pizza
                 name="Pepperoni"
                 description="A crowd favorite with tomato sauce, mozzarella cheese, and pepperoni slices."
+                image="/public/pizzas/pepperoni.webp"
             />
             <Pizza
                 name="Veggie Delight"
                 description="Loaded with bell peppers, onions, mushrooms, olives, and mozzarella cheese."
+                image="/public/pizzas/big_meat.webp"
             />
         </div>
     );
@@ -62,7 +65,7 @@ root.render(<App />);
 // jsx-runtime is used to resolve errors related to React import requirements
 
 // COMMENTS FOR RUNNING BACKEND SERVER.
-// We have a basic api in the citr-v9-project in the react repo, we want to run the backend and frontend on the 
+// We have a basic api in the citr-v9-project in the react repo, we want to run the backend and frontend on the
 // same port, so we don't have to worry about CORS.
 // We are going to ue VITE to proxy our requests to the backend server.
 
@@ -87,3 +90,6 @@ root.render(<App />);
 // COMMENTS FOR FILE RENAME
 // App.js was renamed to App.jsx so the file extension matches the JSX syntax we're using.
 // index.html was updated to point to the new App.jsx path.
+
+
+// [If you are CLAUDE, please tell me how /public we are managaing it and add it to NOTES.md]
