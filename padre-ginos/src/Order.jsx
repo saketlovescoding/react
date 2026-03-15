@@ -1,8 +1,12 @@
+import { useState } from "react";
 import Pizza from "./Pizza";
 
 export default function Order() {
-    const pizzatype = "Pepperoni";
-    const pizzaSize = "M";
+    // const pizzatype = "Pepperoni";
+    // const pizzaSize = "M";
+    const [pizzaType, setPizzaType] = useState("Pepperoni");
+    const [pizzaSize, setPizzaSize] = useState("M");
+    // peeperromoi amd M are the deafult values od
     return (
         <div className="order">
             <h2>Create Order</h2>
@@ -10,7 +14,11 @@ export default function Order() {
                 <div>
                     <div>
                         <label htmlFor="pizza-type">Pizza Type</label>
-                        <select name="pizza-type" value={pizzatype}>
+                        <select
+                            onChange={(e) => setPizzaType(e.target.value)}
+                            name="pizza-type"
+                            value={pizzaType}
+                        >
                             <option value="pepperoni">Pepperoni</option>
                             <option value="margherita">Margherita</option>
                             <option value="veggie-delight">
@@ -23,6 +31,7 @@ export default function Order() {
                         <div>
                             <span>
                                 <input
+                                    onChange={(e) => setPizzaSize(e.target.value)}
                                     type="radio"
                                     checked={pizzaSize === "S"}
                                     name="pizza-size"
@@ -33,6 +42,7 @@ export default function Order() {
                             </span>
                             <span>
                                 <input
+                                    onChange={(e) => setPizzaSize(e.target.value)}
                                     type="radio"
                                     checked={pizzaSize === "M"}
                                     name="pizza-size"
@@ -43,6 +53,7 @@ export default function Order() {
                             </span>
                             <span>
                                 <input
+                                    onChange={(e) => setPizzaSize(e.target.value)}
                                     type="radio"
                                     checked={pizzaSize === "L"}
                                     name="pizza-size"
@@ -67,3 +78,24 @@ export default function Order() {
         </div>
     );
 }
+
+// (e) means an event that is triggered when the user interacts with the dom.
+// We are using the onChange event to detect when the user changes the value of the select or radio inputs.
+// When that happens, we update the state variables pizzaType and pizzaSize with the new values.
+// This is how we manage form state in React.
+// See NOTES.md -> "The Event Object" for full details on what the event object contains.
+
+
+// Hooks cannot be inside loops, conditions or nested functions.
+//  They have to be at the top level of the component.
+// See NOTES.md -> "Why Hooks Must Be Called at the Top Level" for full explanation with examples.
+
+// const pizzaHook = useState(Pepperoni);
+// const pizzaType = pizzaHook[0]
+// const setPizzaType = pizzaHook[1];
+// So useState is a function that returns an array with two elements: the current state value and a function to update that value.
+
+
+
+
+

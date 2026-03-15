@@ -307,3 +307,75 @@ When React was created, the **MVC (Model-View-Controller)** pattern was dominant
   - `onChange={(e) => setPizzaType(e.target.value)}` updates state on every keystroke/selection, which triggers a re-render with the new value.
   - Without `onChange`, the input becomes **read-only** because React won't let the DOM value diverge from state.
   - This pattern applies to all form elements: `<input>`, `<select>`, `<textarea>`, and radio buttons.
+
+## The Event Object (`e`)
+
+- When a user interacts with the DOM (clicks, types, selects, etc.), the browser creates an **event object** and passes it to any registered event handler.
+- In React, event handlers receive a **SyntheticEvent** — a cross-browser wrapper around the native browser event. It has the same interface but works consistently across all browsers.
+- The event object contains useful information about what happened:
+
+| Property / Method      | Description                                                                 |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `e.target`             | The **DOM element** that triggered the event (e.g., the `<select>` or `<input>`) |
+| `e.target.value`       | The **current value** of the input element — this is what you usually want for form handling |
+| `e.target.name`        | The `name` attribute of the element                                         |
+| `e.target.checked`     | For checkboxes/radios — whether the input is checked                        |
+| `e.type`               | The type of event (`"change"`, `"click"`, `"submit"`, etc.)                 |
+| `e.preventDefault()`   | Prevents the browser's default behavior (e.g., stops a form from submitting and reloading the page) |
+| `e.stopPropagation()`  | Stops the event from bubbling up to parent elements                         |
+| `e.currentTarget`      | The element the event handler is **attached to** (may differ from `e.target` if the event bubbled up) |
+
+- Example — accessing `e.target.value` when a dropdown changes:
+  ```jsx
+  <select onChange={(e) => setPizzaType(e.target.value)}>
+  ```
+  Here `e` is the event object, `e.target` is the `<select>` element, and `e.target.value` is whichever `<option>` the user just selected.
+
+- **`e.target` vs `e.currentTarget`**: If you click a `<span>` inside a `<button>`, then `e.target` is the `<span>` (what was actually clicked) and `e.currentTarget` is the `<button>` (where the handler is attached).
+
+## Why Hooks Must Be Called at the Top Level
+
+- React relies on the **order in which hooks are called** to correctly associate each hook with its state. Internally, React maintains a list of hooks for each component, and it matches them by position (first hook call → first slot, second → second, etc.).
+- If you put a hook inside a condition, loop, or nested function, the hook might **not get called on every render** — or it might get called in a **different order**. This breaks React's ability to track which state belongs to which hook.
+- **Bad example — hook inside a condition:**
+  ```jsx
+  function Order() {
+      const [pizzaType, setPizzaType] = useState("Pepperoni");
+
+      // DON'T DO THIS — hook inside a condition
+      if (pizzaType === "Pepperoni") {
+          const [extra, setExtra] = useState("cheese");
+      }
+
+      const [pizzaSize, setPizzaSize] = useState("M");
+
+      return <div>...</div>;
+  }
+  ```
+  On the first render (when `pizzaType` is `"Pepperoni"`), React sees 3 hook calls:
+  1. `useState("Pepperoni")` → slot 0
+  2. `useState("cheese")` → slot 1
+  3. `useState("M")` → slot 2
+
+  If the user changes `pizzaType` to `"Margherita"`, the condition is false and the second `useState` is skipped. Now React sees only 2 hook calls:
+  1. `useState("Pepperoni")` → slot 0
+  2. `useState("M")` → slot 1 ← **React thinks this is the `extra` state!**
+
+  React now maps `pizzaSize` to the wrong slot. This causes **bugs, stale values, or crashes**.
+
+- **The fix** — always declare all hooks at the top level, and use the state conditionally instead:
+  ```jsx
+  function Order() {
+      const [pizzaType, setPizzaType] = useState("Pepperoni");
+      const [extra, setExtra] = useState("cheese");       // always called
+      const [pizzaSize, setPizzaSize] = useState("M");     // always called
+
+      // Use the state conditionally, not the hook
+      return (
+          <div>
+              {pizzaType === "Pepperoni" && <p>Extra: {extra}</p>}
+          </div>
+      );
+  }
+  ```
+- The same rule applies to **loops** and **nested functions** — hooks must always execute in the same order on every render.

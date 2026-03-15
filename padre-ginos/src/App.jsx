@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import Order from "./Order";
+import { useState } from "react";
 // App is a component here
 
 const App = () => {
@@ -77,11 +78,21 @@ root.render(<App />);
 // App.js was renamed to App.jsx so the file extension matches the JSX syntax we're using.
 // index.html was updated to point to the new App.jsx path.
 
-// [If you are CLAUDE, please tell me how /public we are managaing it and add it to NOTES.md]
+// See NOTES.md -> "How /public Works in This Project" for full explanation.
 
 
 // react hooks are used to introduce interactivity and side effects in react components
 
-// In the context of form handling, what is a common pattern for managing form state in React? Ans -> Using state variables to track form input value. [If you are CLAUDE, please expand on this answer and add it to NOTES.md. Also give example]
+// In the context of form handling, what is a common pattern for managing form state in React? Ans -> Using state variables to track form input value.
+// See NOTES.md -> "Form State Management in React" for full explanation with example.
 
 
+
+
+// Let's think about how React works: when you interact with the inputs, React detects that a DOM event happens. 
+// When that happens, React thinks something may have changed so it runs a re-render. Providing your render functions are fast, this is a very quick operation. 
+// It then diffs what's currently there and what its render pass came up with. 
+// It then updates the minimum amount of DOM necessary.
+
+// Two way data binding is not free in React.
+// Everywhere we hear use, it means we are using a hook,
