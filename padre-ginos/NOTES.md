@@ -379,3 +379,213 @@ When React was created, the **MVC (Model-View-Controller)** pattern was dominant
   }
   ```
 - The same rule applies to **loops** and **nested functions** — hooks must always execute in the same order on every render.
+
+## `useState` vs `useEffect`
+
+These are the two most fundamental React hooks, and they serve very different purposes:
+
+| | `useState` | `useEffect` |
+|---|---|---|
+| **Purpose** | Manages **data** (state) inside a component | Manages **side effects** (things outside React's rendering) |
+| **When it runs** | Returns the current state value on every render | Runs **after** the component renders to the DOM |
+| **What it does** | Stores a value and gives you a function to update it — updating triggers a re-render | Runs code that has "effects" on the outside world — API calls, subscriptions, DOM manipulation, timers |
+| **Returns** | `[currentValue, setterFunction]` | Nothing (or a cleanup function) |
+
+- **`useState`** is for **what the component displays** — the data that drives the UI.
+- **`useEffect`** is for **what the component does** — actions that happen as a consequence of rendering, not during it.
+
+Think of it this way: `useState` answers "what should I show?" and `useEffect` answers "what should I do after showing it?"
+
+### Example — using them together:
+```jsx
+import { useState, useEffect } from "react";
+
+function UserProfile({ userId }) {
+    // useState: "I need to track this data"
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    // useEffect: "After rendering, go fetch the data"
+    useEffect(() => {
+        async function fetchUser() {
+            const res = await fetch(`/api/users/${userId}`);
+            const data = await res.json();
+            setUser(data);       // update state → triggers re-render
+            setLoading(false);   // update state → triggers re-render
+        }
+        fetchUser();
+    }, [userId]);
+
+    if (loading) return <p>Loading...</p>;
+    return <h1>{user.name}</h1>;
+}
+```
+
+The flow is:
+1. Component renders with `user = null` and `loading = true` → shows "Loading..."
+2. After render, `useEffect` fires → fetches data from API
+3. When data arrives, `setUser` and `setLoading` update state → component re-renders
+4. Now `loading` is `false` and `user` has data → shows the user's name
+
+## Why `useEffect` Cannot Be an Async Function
+
+You might think you could write:
+```jsx
+// ❌ DON'T DO THIS
+useEffect(async () => {
+    const res = await fetch("/api/pizzas");
+    const data = await res.json();
+    setPizzaTypes(data);
+}, []);
+```
+
+This **does not work correctly** because:
+
+1. **`useEffect` expects its callback to return either nothing or a cleanup function.** An `async` function always returns a **Promise**, not a cleanup function. React doesn't know what to do with a Promise as a return value.
+
+2. **Cleanup functions** are how React handles teardown — for example, unsubscribing from a WebSocket or canceling a timer when the component unmounts. If `useEffect` receives a Promise instead of a function, it can't run cleanup properly.
+
+### The fix — define the async function inside and call it:
+```jsx
+// ✅ CORRECT
+useEffect(() => {
+    async function fetchPizzaTypes() {
+        const res = await fetch("/api/pizzas");
+        const data = await res.json();
+        setPizzaTypes(data);
+    }
+    fetchPizzaTypes();
+}, []);
+```
+
+Or using an immediately invoked function expression (IIFE):
+```jsx
+// ✅ ALSO CORRECT
+useEffect(() => {
+    (async () => {
+        const res = await fetch("/api/pizzas");
+        const data = await res.json();
+        setPizzaTypes(data);
+    })();
+}, []);
+```
+
+Both approaches keep the `useEffect` callback as a regular (non-async) function that returns `undefined`, which is what React expects.
+
+## The `useEffect` Dependency Array
+
+The **second argument** to `useEffect` is the **dependency array** — it controls **when** the effect runs. This is one of the most important concepts to understand about `useEffect`.
+
+### The three cases:
+
+#### 1. No dependency array — runs after **every** render
+```jsx
+useEffect(() => {
+    console.log("I run after EVERY render");
+});
+```
+- Runs on mount, and again after every single re-render.
+- **Use case:** Rarely needed. Useful for debugging or effects that genuinely need to sync with every render.
+- **Warning:** Can cause performance issues if the effect does expensive work.
+
+#### 2. Empty dependency array `[]` — runs **once** on mount
+```jsx
+useEffect(() => {
+    console.log("I run ONCE when the component first mounts");
+    fetchPizzaTypes(); // fetch data once when the page loads
+}, []);
+```
+- Runs only after the **first** render (when the component mounts).
+- Does **not** run again on subsequent re-renders.
+- **Use case:** Fetching initial data, setting up a one-time subscription, initializing a third-party library.
+- This is what we use in `Order.jsx` — we only need to fetch the pizza types once, not every time the user changes a dropdown.
+
+#### 3. Dependency array with values — runs when **dependencies change**
+```jsx
+useEffect(() => {
+    console.log(`Fetching data for user ${userId}`);
+    fetchUserData(userId);
+}, [userId]);
+```
+- Runs after the first render, **and** again whenever any value in the array changes.
+- React compares the current values to the previous values using `Object.is()` — if any dependency is different, the effect re-runs.
+- **Use case:** Re-fetching data when a prop or state value changes.
+
+### Full example — all three cases in one component:
+```jsx
+import { useState, useEffect } from "react";
+
+function ProductPage({ productId }) {
+    const [product, setProduct] = useState(null);
+    const [cart, setCart] = useState([]);
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    // Case 1: No array — runs after every render (for debugging)
+    useEffect(() => {
+        console.log("Component rendered. Product:", product, "Cart:", cart);
+    });
+
+    // Case 2: Empty array [] — runs once on mount
+    useEffect(() => {
+        function handleResize() {
+            setWindowWidth(window.innerWidth);
+        }
+        window.addEventListener("resize", handleResize);
+
+        // Cleanup function — runs when component unmounts
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    // Case 3: [productId] — runs when productId changes
+    useEffect(() => {
+        async function fetchProduct() {
+            const res = await fetch(`/api/products/${productId}`);
+            const data = await res.json();
+            setProduct(data);
+        }
+        fetchProduct();
+    }, [productId]);
+
+    return <div>{product ? product.name : "Loading..."}</div>;
+}
+```
+
+### Multiple dependencies:
+```jsx
+useEffect(() => {
+    fetchFilteredResults(category, sortBy, page);
+}, [category, sortBy, page]);
+```
+- The effect re-runs when **any** of the three values change — changing `category`, `sortBy`, or `page` will all trigger a re-fetch.
+
+### Common mistake — forgetting dependencies:
+```jsx
+// ❌ Bug: stale closure — count will always be 0 inside the interval
+useEffect(() => {
+    const id = setInterval(() => {
+        console.log(count); // always logs the initial value
+    }, 1000);
+    return () => clearInterval(id);
+}, []); // count is missing from dependencies
+
+// ✅ Fix: include count in dependencies
+useEffect(() => {
+    const id = setInterval(() => {
+        console.log(count); // logs the current value
+    }, 1000);
+    return () => clearInterval(id);
+}, [count]); // re-creates interval when count changes
+```
+
+### Cleanup functions:
+When `useEffect` returns a function, React calls it **before re-running the effect** and **when the component unmounts**. This prevents memory leaks:
+```jsx
+useEffect(() => {
+    const socket = new WebSocket("ws://example.com");
+    socket.onmessage = (msg) => setMessages((prev) => [...prev, msg]);
+
+    // Cleanup: close the socket when the component unmounts
+    // or before the effect re-runs
+    return () => socket.close();
+}, []);
+```

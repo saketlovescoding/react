@@ -1,12 +1,38 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Pizza from "./Pizza";
+
+const intl = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+});
 
 export default function Order() {
     // const pizzatype = "Pepperoni";
     // const pizzaSize = "M";
+    const [pizzaTypes, setPizzaTypes] = useState([]);
     const [pizzaType, setPizzaType] = useState("Pepperoni");
     const [pizzaSize, setPizzaSize] = useState("M");
     // peeperromoi amd M are the deafult values od
+
+    const [loading, setLoading] = useState(true);
+
+    let price, selectedPizza;
+    if (!loading) {
+        selectedPizza = pizzaTypes.find((pizza) => pizzaType === pizza.id);
+    }
+
+    async function fetchPizzaTypes() {
+        const pizzaRes = await fetch("/api/pizzas");
+        const pizzaJson = await pizzaRes.json();
+        setPizzaTypes(pizzaJson);
+        setLoading(false);
+    }
+
+    // We cannot directly do async function in useEffect — see NOTES.md -> "Why useEffect Cannot Be an Async Function"
+    useEffect(() => {
+        fetchPizzaTypes();
+    }, []);
+
     return (
         <div className="order">
             <h2>Create Order</h2>
@@ -19,11 +45,11 @@ export default function Order() {
                             name="pizza-type"
                             value={pizzaType}
                         >
-                            <option value="pepperoni">Pepperoni</option>
-                            <option value="margherita">Margherita</option>
-                            <option value="veggie-delight">
-                                Veggie Delight
-                            </option>
+                            {pizzaTypes.map((pizza) => (
+                                <option key={pizza.id} value={pizza.id}>
+                                    {pizza.name}
+                                </option>
+                            ))}
                         </select>
                     </div>
                     <div>
@@ -31,7 +57,9 @@ export default function Order() {
                         <div>
                             <span>
                                 <input
-                                    onChange={(e) => setPizzaSize(e.target.value)}
+                                    onChange={(e) =>
+                                        setPizzaSize(e.target.value)
+                                    }
                                     type="radio"
                                     checked={pizzaSize === "S"}
                                     name="pizza-size"
@@ -42,7 +70,9 @@ export default function Order() {
                             </span>
                             <span>
                                 <input
-                                    onChange={(e) => setPizzaSize(e.target.value)}
+                                    onChange={(e) =>
+                                        setPizzaSize(e.target.value)
+                                    }
                                     type="radio"
                                     checked={pizzaSize === "M"}
                                     name="pizza-size"
@@ -53,7 +83,9 @@ export default function Order() {
                             </span>
                             <span>
                                 <input
-                                    onChange={(e) => setPizzaSize(e.target.value)}
+                                    onChange={(e) =>
+                                        setPizzaSize(e.target.value)
+                                    }
                                     type="radio"
                                     checked={pizzaSize === "L"}
                                     name="pizza-size"
@@ -85,7 +117,6 @@ export default function Order() {
 // This is how we manage form state in React.
 // See NOTES.md -> "The Event Object" for full details on what the event object contains.
 
-
 // Hooks cannot be inside loops, conditions or nested functions.
 //  They have to be at the top level of the component.
 // See NOTES.md -> "Why Hooks Must Be Called at the Top Level" for full explanation with examples.
@@ -96,6 +127,5 @@ export default function Order() {
 // So useState is a function that returns an array with two elements: the current state value and a function to update that value.
 
 
-
-
+// Second parameter in useEffect is the dependency array — see NOTES.md -> "The useEffect Dependency Array"
 
