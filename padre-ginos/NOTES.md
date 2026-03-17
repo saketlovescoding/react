@@ -589,3 +589,108 @@ useEffect(() => {
     return () => socket.close();
 }, []);
 ```
+
+## Derived Values (Computing from State, Not Storing Separately)
+
+A **derived value** is any value you can compute from existing state — you don't store it in its own state variable, you just calculate it during render.
+
+### The core idea
+
+React components are **functions**. Every time state changes, React calls your function again. This means any plain JavaScript expression in the function body **re-evaluates automatically** on every render. You get reactivity for free — no extra hooks, no extra state.
+
+### Example from Order.jsx:
+
+```jsx
+const [pizzaSize, setPizzaSize] = useState("M");
+const [pizzaType, setPizzaType] = useState("");
+
+let price, selectedPizza;
+if (!loading) {
+    selectedPizza = pizzaTypes.find((pizza) => pizzaType === pizza.id);
+    price = intl.format(selectedPizza.sizes[pizzaSize]);
+}
+```
+
+Here `price` is derived from `pizzaSize` + `selectedPizza`. It's **not** stored in state — it's just a local variable that gets recalculated every time the component re-renders.
+
+### Why this works — the re-render cycle:
+
+1. User clicks the "Large" radio button
+2. `onChange` fires → `setPizzaSize("L")` is called
+3. React sees state changed → calls `Order()` again (re-render)
+4. Inside the function body, `pizzaSize` is now `"L"`
+5. `price = intl.format(selectedPizza.sizes["L"])` — automatically uses the new size
+6. React updates the DOM with the new price
+
+No `useEffect` needed. No extra `useState` for price. The value is just **computed fresh** each render.
+
+### The bug we fixed:
+
+```jsx
+// ❌ BEFORE — hardcoded to "M", ignores the pizzaSize state entirely
+price = selectedPizza.sizes["M"];
+
+// ✅ AFTER — derives the price from the actual selected size
+price = intl.format(selectedPizza.sizes[pizzaSize]);
+```
+
+The hardcoded version broke the connection between state and UI. Even though `pizzaSize` updated correctly when the user clicked a radio button, the price never changed because it wasn't reading from `pizzaSize`.
+
+### When to derive vs. when to store in state:
+
+- **Derive it** if you can compute it from existing state/props. Examples: filtered lists, formatted values, totals, selected items.
+- **Store it in state** if the value comes from **outside** React (user input, API response, timer) or can't be computed from other state.
+
+**Rule of thumb:** If you can write `const x = someExpression(existingState)`, then `x` is derived and should **not** be in `useState`. Unnecessary state means unnecessary re-renders and more places for bugs to hide.
+
+## Choosing the Right `useEffect` Dependencies
+
+The dependency array tells React: **"re-run this effect when these values change."** Getting it wrong causes bugs that range from subtle to catastrophic.
+
+### First principle: match dependencies to what the effect actually uses
+
+Ask yourself: **"If this value changed, would the effect need to do something different?"**
+
+- If **yes** → include it in the dependency array.
+- If **no** → don't include it.
+
+### Example — fetching pizza types:
+
+```jsx
+// ❌ BEFORE — pizzaSize in dependency array
+useEffect(() => {
+    fetchPizzaTypes();
+}, [pizzaSize]);
+
+// ✅ AFTER — empty array, fetch once on mount
+useEffect(() => {
+    fetchPizzaTypes();
+}, []);
+```
+
+**Why `pizzaSize` was wrong:** The function `fetchPizzaTypes()` fetches the menu from `/api/pizzas`. The menu is the same whether the user picked Small, Medium, or Large — size has nothing to do with what pizzas exist. So `pizzaSize` is not a real dependency of this effect.
+
+### What went wrong with `[pizzaSize]`:
+
+1. User clicks "Large" radio button → `pizzaSize` changes to `"L"`
+2. React sees a dependency changed → re-runs the effect
+3. `fetchPizzaTypes()` fires → fetches the **same** pizza list from the API (wasted network request)
+4. `setPizzaType(pizzaJson[0].id)` runs → **resets the selected pizza back to the first one**
+5. User's pizza selection is lost — confusing UX bug
+
+This is a cascade of problems from one wrong dependency. The API call is wasteful, and the state reset is a real bug the user would notice.
+
+### Mental model for choosing dependencies:
+
+| Scenario | Dependency array | Why |
+|---|---|---|
+| Fetch data once on mount | `[]` | Data doesn't depend on any state — load it once |
+| Re-fetch when a specific filter changes | `[filter]` | New filter = new data needed |
+| Re-fetch when the user ID changes | `[userId]` | Different user = different data |
+| Log every render (debugging) | omit entirely | Want it to run every time |
+
+### The key question to always ask:
+
+> "Does `fetchPizzaTypes()` **behave differently** when `pizzaSize` changes?"
+
+No — it fetches the same endpoint, gets the same data, sets the same state. So `pizzaSize` has no business being in that dependency array.

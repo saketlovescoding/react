@@ -10,7 +10,7 @@ export default function Order() {
     // const pizzatype = "Pepperoni";
     // const pizzaSize = "M";
     const [pizzaTypes, setPizzaTypes] = useState([]);
-    const [pizzaType, setPizzaType] = useState("Pepperoni");
+    const [pizzaType, setPizzaType] = useState("");
     const [pizzaSize, setPizzaSize] = useState("M");
     // peeperromoi amd M are the deafult values od
 
@@ -19,12 +19,17 @@ export default function Order() {
     let price, selectedPizza;
     if (!loading) {
         selectedPizza = pizzaTypes.find((pizza) => pizzaType === pizza.id);
+        console.log(selectedPizza);
+        // price = selectedPizza.price
+        price = intl.format(selectedPizza.sizes[pizzaSize]);
+        console.log(price);
     }
 
     async function fetchPizzaTypes() {
         const pizzaRes = await fetch("/api/pizzas");
         const pizzaJson = await pizzaRes.json();
         setPizzaTypes(pizzaJson);
+        setPizzaType(pizzaJson[0].id);
         setLoading(false);
     }
 
@@ -99,12 +104,16 @@ export default function Order() {
                     <button type="submit">Add to cart</button>
                 </div>
                 <div className="order-pizza">
-                    <Pizza
-                        name="Pepperoni"
-                        description="A crowd favorite with tomato sauce, mozzarella cheese, and pepperoni slices."
-                        image="/public/pizzas/pepperoni.webp"
-                    />
-                    <p>$13.99</p>
+                    {loading ? (
+                        <p>Loading...</p>
+                    ) : (
+                        <Pizza
+                            name={selectedPizza.name}
+                            description={selectedPizza.description}
+                            image={selectedPizza.image}
+                        />
+                    )}
+                    <p>{price}</p>
                 </div>
             </form>
         </div>
@@ -126,6 +135,4 @@ export default function Order() {
 // const setPizzaType = pizzaHook[1];
 // So useState is a function that returns an array with two elements: the current state value and a function to update that value.
 
-
 // Second parameter in useEffect is the dependency array — see NOTES.md -> "The useEffect Dependency Array"
-
