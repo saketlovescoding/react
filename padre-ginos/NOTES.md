@@ -694,3 +694,161 @@ This is a cascade of problems from one wrong dependency. The API call is wastefu
 > "Does `fetchPizzaTypes()` **behave differently** when `pizzaSize` changes?"
 
 No — it fetches the same endpoint, gets the same data, sets the same state. So `pizzaSize` has no business being in that dependency array.
+
+## Custom Hooks
+
+A **custom hook** is just a regular JavaScript function that calls other hooks. It lets you **extract reusable logic** out of a component so multiple components can share the same behavior without duplicating code.
+
+### The naming convention
+
+Custom hooks **must** start with `use` — e.g., `usePizzaOfTheDay`, `useAuth`, `useFetch`. This isn't just a convention — React's linter uses the `use` prefix to enforce the Rules of Hooks inside your custom hook.
+
+### Example — `usePizzaOfTheDay`:
+
+```jsx
+// usePizzaOfTheDay.jsx
+import { useState, useEffect } from "react";
+
+export const usePizzaOfTheDay = () => {
+    const [pizzaOfTheDay, setPizzaOfTheDay] = useState(null);
+
+    useEffect(() => {
+        async function fetchPizzaOfTheDay() {
+            const response = await fetch("/api/pizza-of-the-day");
+            const data = await response.json();
+            setPizzaOfTheDay(data);
+        }
+        fetchPizzaOfTheDay();
+    }, []);
+
+    return pizzaOfTheDay;
+};
+```
+
+The component that uses it becomes very clean:
+
+```jsx
+// PizzaOfTheDay.jsx
+import { usePizzaOfTheDay } from "./usePizzaOfTheDay";
+
+const PizzaOfTheDay = () => {
+    const pizzaOfTheDay = usePizzaOfTheDay();
+
+    if (!pizzaOfTheDay) return <div>Loading...</div>;
+
+    return <h2>{pizzaOfTheDay.name}</h2>;
+};
+```
+
+### Why we need `useState` and `useEffect` here — from first principles
+
+Let's think about what happens if we **don't** use these hooks:
+
+#### Why not just fetch directly?
+
+```jsx
+// ❌ DON'T DO THIS
+const PizzaOfTheDay = () => {
+    const response = fetch("/api/pizza-of-the-day"); // returns a Promise, not data
+    const data = response.json(); // still a Promise
+
+    return <h2>{data.name}</h2>; // undefined — crash
+};
+```
+
+**Problem 1:** `fetch()` is **asynchronous** — it returns a Promise, not the actual data. You can't use `await` directly in a component body because components are synchronous functions that must return JSX immediately.
+
+**Problem 2:** Even if you could somehow wait for it, React would call this function on **every re-render**, firing a new network request each time. If a parent re-renders, this component re-renders, and boom — another API call.
+
+#### Why `useState`?
+
+We need somewhere to **store the fetched data** so it survives across re-renders. Local variables (`let data = null`) get wiped out every time React calls the function again. `useState` gives you a value that **persists** between renders and a setter that **triggers a re-render** when updated.
+
+```jsx
+const [pizzaOfTheDay, setPizzaOfTheDay] = useState(null);
+// Render 1: pizzaOfTheDay = null (show "Loading...")
+// Render 2: pizzaOfTheDay = { name: "Margherita", ... } (show the pizza)
+```
+
+Without `useState`, the component would have no way to remember the data after it's fetched.
+
+#### Why `useEffect`?
+
+We need a way to say **"run this code once after the component first renders, not during rendering."** That's exactly what `useEffect` with an empty dependency array does.
+
+- **"After rendering"** — because we don't want to block the UI while waiting for the API. Show "Loading..." immediately, then update when data arrives.
+- **"Once"** — because the pizza of the day doesn't change between re-renders. The empty `[]` dependency array ensures we fetch only on mount.
+- **"Not during rendering"** — fetching data is a **side effect** (it reaches outside the component to talk to a server). React's rendering phase should be pure — just compute JSX from props and state. Side effects go in `useEffect`.
+
+#### The full flow:
+
+1. React calls `usePizzaOfTheDay()` → `useState(null)` returns `null` → component renders "Loading..."
+2. After the DOM updates, `useEffect` fires → starts the `fetch()` call
+3. API responds → `setPizzaOfTheDay(data)` updates state
+4. React re-renders the component → `useState` now returns the fetched data → component shows the pizza
+5. `useEffect` does **not** fire again (empty `[]` — no dependencies changed)
+
+### Hooks must be called in the same order
+
+This rule applies to custom hooks too. All hooks inside a custom hook must be called at the top level, not inside conditions or loops:
+
+```jsx
+// ❌ BAD — hook inside a condition
+export const usePizzaOfTheDay = () => {
+    const isWeekend = new Date().getDay() === 0;
+
+    if (isWeekend) {
+        const [pizza, setPizza] = useState(null); // breaks Rules of Hooks
+    }
+    // ...
+};
+
+// ✅ GOOD — hooks at the top, use state conditionally
+export const usePizzaOfTheDay = () => {
+    const [pizza, setPizza] = useState(null);
+    const isWeekend = new Date().getDay() === 0;
+
+    useEffect(() => {
+        if (!isWeekend) fetchPizza(); // condition inside the effect, not wrapping the hook
+    }, []);
+
+    return pizza;
+};
+```
+
+### Why custom hooks matter
+
+- **Reuse** — if another component needs the pizza of the day, it just calls `usePizzaOfTheDay()`. No copy-pasting fetch logic.
+- **Separation of concerns** — the component focuses on **what to render**, the hook focuses on **how to get the data**.
+- **Testability** — you can test the hook's logic independently from the component's UI.
+- **They're just functions** — no magic. A custom hook is a function that calls other hooks and returns values. That's it.
+
+## StrictMode
+
+`StrictMode` is a React development tool that helps you find bugs early. It doesn't render any visible UI — it just activates extra checks and warnings for the components inside it.
+
+```jsx
+import { StrictMode } from "react";
+
+const App = () => {
+    return (
+        <StrictMode>
+            <div>
+                <h1>Padre Gino's</h1>
+                <Order />
+                <PizzaOfTheDay />
+            </div>
+        </StrictMode>
+    );
+};
+```
+
+### What it does:
+
+- **Double-invokes** your component functions, effects, and state updaters during development to help you spot impure renders and side effects that shouldn't be there.
+- Warns about **deprecated APIs** (like old lifecycle methods in class components).
+- **No effect in production** — `StrictMode` checks are completely stripped out of production builds, so there's zero performance cost.
+
+### Why the double rendering matters:
+
+If your component fetches data or logs something inside the render body (not in `useEffect`), StrictMode will make it obvious by running it twice. This helps catch accidental side effects during rendering.

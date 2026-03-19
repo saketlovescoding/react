@@ -1,14 +1,18 @@
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import Order from "./Order";
-import { useState } from "react";
+import PizzaOfTheDay from "./PizzaOfTheDay";
 // App is a component here
 
 const App = () => {
     return (
-        <div>
-            <h1>Padre Gino's - Order Now</h1>
-            <Order />
-        </div>
+        <StrictMode>
+            <div>
+                <h1>Padre Gino's - Order Now</h1>
+                <Order />
+                <PizzaOfTheDay />
+            </div>
+        </StrictMode>
     );
 };
 
@@ -80,18 +84,14 @@ root.render(<App />);
 
 // See NOTES.md -> "How /public Works in This Project" for full explanation.
 
-
 // react hooks are used to introduce interactivity and side effects in react components
 
 // In the context of form handling, what is a common pattern for managing form state in React? Ans -> Using state variables to track form input value.
 // See NOTES.md -> "Form State Management in React" for full explanation with example.
 
-
-
-
-// Let's think about how React works: when you interact with the inputs, React detects that a DOM event happens. 
-// When that happens, React thinks something may have changed so it runs a re-render. Providing your render functions are fast, this is a very quick operation. 
-// It then diffs what's currently there and what its render pass came up with. 
+// Let's think about how React works: when you interact with the inputs, React detects that a DOM event happens.
+// When that happens, React thinks something may have changed so it runs a re-render. Providing your render functions are fast, this is a very quick operation.
+// It then diffs what's currently there and what its render pass came up with.
 // It then updates the minimum amount of DOM necessary.
 
 // Two way data binding is not free in React.
