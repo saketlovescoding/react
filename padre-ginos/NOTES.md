@@ -957,3 +957,311 @@ export const usePizzaOfTheDay = () => {
 ```
 
 When you inspect a component using this hook in React DevTools, instead of seeing raw state, you'll see a readable label like `"pepperoni : Pepperoni Pizza"` or `"loading..."`. This makes it easier to debug custom hooks without expanding state objects.
+
+## Context API — `createContext` and `useContext`
+
+### The problem: Prop Drilling
+
+When multiple components need the same data, you have to pass it through every intermediate component as props — even if those components don't use it themselves. This is called **prop drilling**, and it gets annoying fast:
+
+```jsx
+// ❌ Prop drilling — App → Order → Cart → CartItem, every level passes cart down
+function App() {
+    const [cart, setCart] = useState([]);
+    return <Order cart={cart} setCart={setCart} />;
+}
+
+function Order({ cart, setCart }) {
+    // Order doesn't even use cart/setCart directly,
+    // but it has to receive them just to pass them down
+    return <Cart cart={cart} setCart={setCart} />;
+}
+
+function Cart({ cart, setCart }) {
+    return cart.map((item) => <CartItem key={item.id} item={item} />);
+}
+```
+
+If you add a `Header` component that also needs the cart count, you'd have to thread `cart` through even more components. Every new consumer means more props at every level.
+
+### The solution: Context
+
+Context lets you create a **shared data portal** — you put data in at one level, and any component anywhere in the tree can pull it out without it being passed through props.
+
+Think of it like a radio broadcast: the Provider is the radio station (puts data out), and `useContext` is the radio receiver (tunes in from anywhere).
+
+### Step 1 — Create the context (`contexts.jsx`)
+
+```jsx
+import { createContext } from "react";
+
+// The argument to createContext is the default value — used when a component
+// reads the context but there's no Provider above it in the tree.
+// We're storing [state, setter] so the default mirrors that shape.
+export const CartContext = createContext([[], function () {}]);
+```
+
+- We put all context definitions in a **separate file** (`contexts.jsx`) so any component can import them without circular dependencies.
+- The default value `[[], function() {}]` matches the shape of `useState([])` — an empty array and a no-op setter. This way, even without a Provider, consuming components won't crash.
+
+### Step 2 — Provide the context (`App.jsx`)
+
+```jsx
+import { StrictMode, useState } from "react";
+import { CartContext } from "./contexts";
+
+const App = () => {
+    const cartHook = useState([]); // returns [cart, setCart]
+    return (
+        <StrictMode>
+            <CartContext.Provider value={cartHook}>
+                <div>
+                    <Header />
+                    <Order />
+                    <PizzaOfTheDay />
+                </div>
+            </CartContext.Provider>
+        </StrictMode>
+    );
+};
+```
+
+- `CartContext.Provider` wraps the entire app so **every child** can access the cart.
+- `value={cartHook}` passes the full `useState` return value (`[cart, setCart]`) into the context. Any component that reads this context gets both the data and the setter.
+- The Provider goes at the **highest common ancestor** of all components that need the data.
+
+### Step 3 — Consume the context (`useContext`)
+
+Any component in the tree can now read the cart — no props needed:
+
+```jsx
+// Header.jsx — only needs to read the cart
+import { useContext } from "react";
+import { CartContext } from "./contexts";
+
+export default function Header() {
+    const [cart] = useContext(CartContext); // destructure just the array
+    return (
+        <nav>
+            <h1 className="logo">Padre Gino's Pizza</h1>
+            <div className="nav-cart">
+                <span className="nav-cart-number">{cart.length}</span>
+            </div>
+        </nav>
+    );
+}
+```
+
+```jsx
+// Order.jsx — needs both cart and setCart
+import { useContext } from "react";
+import { CartContext } from "./contexts";
+
+export default function Order() {
+    const [cart, setCart] = useContext(CartContext);
+
+    // can read cart to display items
+    // can call setCart to add/remove items
+    // ...
+}
+```
+
+Both `Header` and `Order` access the same cart data **without any prop drilling**. Neither `App` nor any intermediate component needs to explicitly pass `cart` as a prop.
+
+### When to use Context vs Props
+
+| Use **Props** when... | Use **Context** when... |
+|---|---|
+| Data is only needed by **1–2 levels** deep | Data is needed by **many components** at different levels |
+| The data flow is **direct** parent → child | Prop drilling would require passing through components that don't use the data |
+| The data is **component-specific** (e.g., a pizza's name) | The data is **app-level** (e.g., logged-in user, cart, theme) |
+
+**Rule of thumb:** Use props by default. Switch to context when you find yourself passing the same data through 3+ components just to get it to the one that needs it — or when the data is truly global (auth state, theme, cart).
+
+### Use context with care
+
+Context makes data **globally accessible**, which sounds great but has trade-offs:
+
+- **Any component** can read and modify the context, making it harder to track where state changes come from.
+- Context changes cause **all consuming components** to re-render, even if they only use part of the context value.
+- Overusing context turns your app into a bag of global variables — the same problem React's component model was designed to avoid.
+
+Save context for **genuinely app-wide state**: the shopping cart, the authenticated user, the color theme. For everything else, props are simpler and more explicit.
+
+## Child-to-Parent Communication
+
+### The question: How can a child component affect its parent's state?
+
+**Answer:** By calling a **function passed down from the parent as a prop.**
+
+React's data flow is one-way (parent → child), so a child can't directly reach up and change its parent's state. But the parent can hand the child a function that, when called, modifies the parent's own state. The child triggers the change, but the parent stays in control.
+
+### Example — adding items to a cart
+
+```jsx
+// Parent: Order.jsx
+import { useState } from "react";
+import Cart from "./Cart";
+
+export default function Order() {
+    const [cart, setCart] = useState([]);
+
+    function addToCart(item) {
+        setCart([...cart, item]); // only Order can modify cart
+    }
+
+    function removeFromCart(index) {
+        setCart(cart.filter((_, i) => i !== index));
+    }
+
+    return (
+        <div>
+            <button onClick={() => addToCart({ name: "Pepperoni", price: 12 })}>
+                Add Pepperoni
+            </button>
+            {/* Pass functions as props — child can call them but can't access setCart */}
+            <Cart
+                cart={cart}
+                onRemove={removeFromCart}
+            />
+        </div>
+    );
+}
+```
+
+```jsx
+// Child: Cart.jsx
+export default function Cart({ cart, onRemove }) {
+    return (
+        <ul>
+            {cart.map((item, index) => (
+                <li key={index}>
+                    {item.name} — ${item.price}
+                    {/* Child calls parent's function — parent's state updates */}
+                    <button onClick={() => onRemove(index)}>Remove</button>
+                </li>
+            ))}
+        </ul>
+    );
+}
+```
+
+### The flow when the user clicks "Remove":
+
+1. User clicks the "Remove" button inside `Cart` (child)
+2. `Cart` calls `onRemove(index)` — a function that **lives in `Order`** (parent)
+3. Inside `Order`, `removeFromCart` runs → calls `setCart(...)` → state updates
+4. React re-renders `Order` with the new cart → passes updated `cart` prop to `Cart`
+5. `Cart` re-renders with the item removed
+
+The child **never touches `setCart` directly**. It only calls the function the parent gave it. The parent decides what happens to its own state.
+
+### Another example — form input in a child
+
+```jsx
+// Parent
+function SearchPage() {
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState([]);
+
+    function handleSearch(searchTerm) {
+        setQuery(searchTerm);
+        fetch(`/api/search?q=${searchTerm}`)
+            .then((res) => res.json())
+            .then(setResults);
+    }
+
+    return (
+        <div>
+            <SearchBar onSearch={handleSearch} />
+            <ResultsList results={results} />
+        </div>
+    );
+}
+
+// Child — has no idea what happens with the search term
+function SearchBar({ onSearch }) {
+    const [input, setInput] = useState("");
+
+    return (
+        <form onSubmit={(e) => {
+            e.preventDefault();
+            onSearch(input); // tell the parent "user searched for this"
+        }}>
+            <input value={input} onChange={(e) => setInput(e.target.value)} />
+            <button type="submit">Search</button>
+        </form>
+    );
+}
+```
+
+`SearchBar` manages its own local input state, but when the user submits, it calls the parent's `onSearch` to trigger the actual search. The child handles the UI, the parent handles the logic.
+
+## Component Encapsulation
+
+### The question: What is a key advantage of React's component encapsulation?
+
+**Answer:** Easier debugging by **localizing potential issues** — each component is self-contained, so bugs are confined to a smaller, predictable scope.
+
+### What encapsulation means in React
+
+Each component **owns its own state** and only modifies it through its own setter functions. No other component can reach in and change that state directly. This means:
+
+- If `cart` has a wrong value, the bug **must** be in the component that owns `cart` state (or in a function that component passed down).
+- You don't need to search the entire codebase — just look at the component that owns the state and the functions it exposes.
+
+### Example — isolating a bug
+
+Imagine the cart shows the wrong total. Where do you look?
+
+```jsx
+// Order.jsx — owns the cart state
+function Order() {
+    const [cart, setCart] = useState([]);
+
+    function addToCart(item) {
+        setCart([...cart, item]); // ← if items are wrong, bug is HERE
+    }
+
+    async function checkout() {
+        await fetch("/api/order", { method: "POST", body: JSON.stringify({ cart }) });
+        setCart([]); // ← if cart doesn't clear, bug is HERE
+    }
+
+    const total = cart.reduce((sum, item) => sum + item.price, 0);
+    // ← if total is wrong, bug is HERE (derived value)
+
+    return (
+        <div>
+            <Cart cart={cart} checkout={checkout} />
+            <p>Total: ${total}</p>
+        </div>
+    );
+}
+```
+
+```jsx
+// Cart.jsx — can only READ cart and CALL checkout
+function Cart({ cart, checkout }) {
+    return (
+        <div>
+            {cart.map((item, i) => (
+                <p key={i}>{item.name}: ${item.price}</p>
+            ))}
+            <button onClick={checkout}>Checkout</button>
+        </div>
+    );
+}
+```
+
+- If items in the cart are wrong → look at `addToCart` in `Order` (it's the only function that adds to cart).
+- If the total is wrong → look at the `reduce` in `Order` (it's a derived value computed there).
+- If checkout doesn't clear the cart → look at `checkout` in `Order` (it's the only function that calls `setCart([])`).
+- `Cart` **cannot** be the source of any state bugs — it only reads props and calls functions. It has no state of its own.
+
+### Why this matters at scale
+
+In a large app, encapsulation means:
+- **Bugs are localized** — you can trace any state issue back to the component that owns it.
+- **Changes are safe** — modifying `Cart`'s rendering logic can't accidentally break `Order`'s state.
+- **Components are replaceable** — you can swap out `Cart` for a completely different implementation, and as long as it accepts the same props, `Order` doesn't care.

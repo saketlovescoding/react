@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import Cart from "./Cart";
 import Pizza from "./Pizza";
+import { CartContext } from "./contexts";
 
 const intl = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -15,7 +16,7 @@ export default function Order() {
     const [pizzaSize, setPizzaSize] = useState("M");
     // peeperromoi amd M are the deafult values od
 
-    const [cart, setCart] = useState([]);
+    const [cart, setCart] = useContext(CartContext)
 
     const [loading, setLoading] = useState(true);
 
@@ -172,5 +173,23 @@ export default function Order() {
 // So useState is a function that returns an array with two elements: the current state value and a function to update that value.
 
 // Second parameter in useEffect is the dependency array — see NOTES.md -> "The useEffect Dependency Array"
+
+// Q. How can a child component affect its parent's state in React?
+// by calling a function passed down from the parent as a prop
+
+// Q. What is a key advantage of React's component encapsulation?
+// Easir debugging by localising the potential issues,
+
+// [CLAUDE explaint the above 2 questions using examle in detail in notes.md]
+
+// Use useContext with a lot of care.
+// useContext is like putting data into the portal and then usng that data somewhere else in the app
+
+// prop drilling can get annoting if it is lot 
+// unless we are using context/state in multiple places we should  use state
+
+// but there are app level states which affect a lot of thing
+// like when a user logins the app.
+// so we can say taht there is an app level statee from where everyone can use that data
 
 
