@@ -852,3 +852,108 @@ const App = () => {
 ### Why the double rendering matters:
 
 If your component fetches data or logs something inside the render body (not in `useEffect`), StrictMode will make it obvious by running it twice. This helps catch accidental side effects during rendering.
+
+## Cart Component and One-Way Data Flow
+
+### How Cart works with Order
+
+The `Cart` component receives **two props** from `Order`:
+
+```jsx
+<Cart checkout={checkout} cart={cart} />
+```
+
+- `cart` — the array of items the user has added (data flows **down** from parent to child).
+- `checkout` — a function defined in `Order` that the child can **call** to trigger a state change in the parent.
+
+### One-way data flow
+
+In React, data flows in **one direction: parent → child** via props. A child component **cannot** directly modify its parent's state. But a parent can pass a **function** as a prop, and the child calls that function to indirectly affect the parent's state:
+
+```jsx
+// Parent (Order.jsx)
+const [cart, setCart] = useState([]);
+
+async function checkout() {
+    // ... POST to API ...
+    setCart([]);  // clears cart — only Order can do this
+}
+
+// Pass the function to the child
+<Cart checkout={checkout} cart={cart} />
+
+// Child (Cart.jsx) — calls the parent's function
+<button onClick={checkout}>Checkout</button>
+```
+
+The child never touches `setCart` directly. It just calls `checkout`, which lives in the parent and has access to `setCart`. This keeps components **self-encapsulating** — each component only modifies its own state.
+
+### Props vs State
+
+| | Props | State |
+|---|---|---|
+| **Who controls it** | Parent component | The component itself |
+| **Mutable?** | No — props are **read-only** to the receiving component | Yes — updated via setter functions like `setCart()` |
+| **Triggers re-render?** | Yes — when parent passes new props, child re-renders | Yes — when state changes, the component re-renders |
+
+**Key rule:** A component can only modify its own state. These components are self-encapsulating.
+
+## Form `onSubmit` — Why You Need One Form, Not Two
+
+### The bug we fixed
+
+The original code had **two separate `<form>` elements**:
+
+```jsx
+// ❌ BUG — two forms, submit handler on the wrong one
+<form onSubmit={(e) => {
+    e.preventDefault();
+    setCart([...cart, { pizza: selectedPizza, size: pizzaSize, price }]);
+}}></form>          {/* ← empty form, immediately closed */}
+<form action="">    {/* ← second form with inputs but NO onSubmit */}
+    <select>...</select>
+    <input type="radio" />
+    <button type="submit">Add to cart</button>
+</form>
+```
+
+**What happened:** Clicking "Add to cart" submitted the **second** form (the one with `action=""`), which had no `onSubmit` handler. The browser's default form behavior kicked in — it tried to navigate/reload the page. The first form's `onSubmit` with `e.preventDefault()` and `setCart(...)` never fired because that form had no inputs or submit button inside it.
+
+### The fix — one form with both the handler and the inputs:
+
+```jsx
+// ✅ FIXED — single form with onSubmit and all inputs inside it
+<form onSubmit={(e) => {
+    e.preventDefault();
+    setCart([...cart, { pizza: selectedPizza, size: pizzaSize, price }]);
+}}>
+    <select>...</select>
+    <input type="radio" />
+    <button type="submit">Add to cart</button>
+</form>
+```
+
+### Why `e.preventDefault()` matters here
+
+When a `<form>` is submitted, the browser's default behavior is to send the form data to the URL in `action` (or the current page) and **reload the page**. In a React app, we don't want that — we want to handle the submission in JavaScript and update state instead. `e.preventDefault()` stops the browser from doing its default thing, so React stays in control.
+
+## `useDebugValue`
+
+`useDebugValue` is a hook that lets you add a **label** to your custom hooks in React DevTools. It doesn't affect the app's behavior at all — it's purely a debugging aid.
+
+```jsx
+import { useState, useEffect, useDebugValue } from "react";
+
+export const usePizzaOfTheDay = () => {
+    const [pizzaOfTheDay, setPizzaOfTheDay] = useState(null);
+
+    useDebugValue(pizzaOfTheDay
+        ? `${pizzaOfTheDay.id} : ${pizzaOfTheDay.name}`
+        : "loading...");
+
+    // ... useEffect to fetch data ...
+    return pizzaOfTheDay;
+};
+```
+
+When you inspect a component using this hook in React DevTools, instead of seeing raw state, you'll see a readable label like `"pepperoni : Pepperoni Pizza"` or `"loading..."`. This makes it easier to debug custom hooks without expanding state objects.

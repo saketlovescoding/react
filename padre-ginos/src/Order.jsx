@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Cart from "./Cart";
 import Pizza from "./Pizza";
 
 const intl = new Intl.NumberFormat("en-US", {
@@ -14,7 +15,29 @@ export default function Order() {
     const [pizzaSize, setPizzaSize] = useState("M");
     // peeperromoi amd M are the deafult values od
 
+    const [cart, setCart] = useState([]);
+
     const [loading, setLoading] = useState(true);
+
+    async function checkout() {
+        setLoading(true);
+
+        // we load to true, because we don't want edits to occur while checking out
+
+        await fetch("/api/order", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ cart }),
+        });
+
+        // checking out, we set cart to empty
+        setCart([]);
+        setLoading(false);
+    }
+
+    // we have to pass parent to child the checkout. via the props
 
     let price, selectedPizza;
     if (!loading) {
@@ -41,7 +64,15 @@ export default function Order() {
     return (
         <div className="order">
             <h2>Create Order</h2>
-            <form action="">
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    setCart([
+                        ...cart,
+                        { pizza: selectedPizza, size: pizzaSize, price },
+                    ]);
+                }}
+            >
                 <div>
                     <div>
                         <label htmlFor="pizza-type">Pizza Type</label>
@@ -116,6 +147,11 @@ export default function Order() {
                     <p>{price}</p>
                 </div>
             </form>
+            {loading ? (
+                <h2>LOADING...</h2>
+            ) : (
+                <Cart checkout={checkout} cart={cart} />
+            )}
         </div>
     );
 }
@@ -136,3 +172,5 @@ export default function Order() {
 // So useState is a function that returns an array with two elements: the current state value and a function to update that value.
 
 // Second parameter in useEffect is the dependency array — see NOTES.md -> "The useEffect Dependency Array"
+
+
