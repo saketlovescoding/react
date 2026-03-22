@@ -1,17 +1,16 @@
+import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { RouterProvider, createRouter } from "@tanstack/react-router";
-import {routeTree} from "./routeTree.gen"
+import { routeTree } from "./routeTree.gen";
 // App is a component here
 
-const router = createRouter({routeTree})
+const router = createRouter({ routeTree });
 
 // we are wraopping our whole app in the CartContext
 const App = () => {
-    const cartHook = useState([])
     return (
         <StrictMode>
-           <RouterProvider router={router}/>
+            <RouterProvider router={router} />
         </StrictMode>
     );
 };

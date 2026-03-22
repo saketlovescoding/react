@@ -5,8 +5,9 @@ import PizzaOfTheDay from "../PizzaOfTheDay"
 import Header from "../Header"
 import { CartContext } from '../contexts'
 
-export const Route = createRootRoute({
-    component: () => (
+function RootComponent() {
+    const cartHook = useState([]);
+    return (
         <>
             <CartContext.Provider value={cartHook}>
                 <div>
@@ -17,7 +18,11 @@ export const Route = createRootRoute({
             </CartContext.Provider>
             <TanStackRouterDevtools />
         </>
-    ),
+    );
+}
+
+export const Route = createRootRoute({
+    component: RootComponent,
 });
 
 // Q What does the <Outlet/> component do in TanStack Router?
@@ -27,3 +32,4 @@ export const Route = createRootRoute({
 // Q-> Use if the __root.jsx file/ 
 // [CLAUDE explain the above statements in deails from first prinfcipas with code in the notes.md]
 
+// [ Cluade update notes with new data in the code. Explain this tastack router thing in the notes. Explain from irst principles taking code examples and by telling all the steps done here. and lazy loading as well. basically everything new we deid here]

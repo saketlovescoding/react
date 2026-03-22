@@ -1004,31 +1004,34 @@ export const CartContext = createContext([[], function () {}]);
 - We put all context definitions in a **separate file** (`contexts.jsx`) so any component can import them without circular dependencies.
 - The default value `[[], function() {}]` matches the shape of `useState([])` — an empty array and a no-op setter. This way, even without a Provider, consuming components won't crash.
 
-### Step 2 — Provide the context (`App.jsx`)
+### Step 2 — Provide the context (root layout)
+
+The Provider wraps the entire app so **every child** can access the cart. With TanStack Router, this lives in `__root.jsx` (the root layout) rather than `App.jsx`:
 
 ```jsx
-import { StrictMode, useState } from "react";
-import { CartContext } from "./contexts";
+// src/routes/__root.jsx
+import { useState } from "react";
+import { Outlet, createRootRoute } from "@tanstack/react-router";
+import { CartContext } from "../contexts";
 
-const App = () => {
+function RootComponent() {
     const cartHook = useState([]); // returns [cart, setCart]
     return (
-        <StrictMode>
-            <CartContext.Provider value={cartHook}>
-                <div>
-                    <Header />
-                    <Order />
-                    <PizzaOfTheDay />
-                </div>
-            </CartContext.Provider>
-        </StrictMode>
+        <CartContext.Provider value={cartHook}>
+            <div>
+                <Header />
+                <Outlet />
+                <PizzaOfTheDay />
+            </div>
+        </CartContext.Provider>
     );
-};
+}
+
+export const Route = createRootRoute({ component: RootComponent });
 ```
 
-- `CartContext.Provider` wraps the entire app so **every child** can access the cart.
 - `value={cartHook}` passes the full `useState` return value (`[cart, setCart]`) into the context. Any component that reads this context gets both the data and the setter.
-- The Provider goes at the **highest common ancestor** of all components that need the data.
+- The Provider goes at the **highest common ancestor** of all components that need the data — in a TanStack Router app, that's `__root.jsx`.
 
 ### Step 3 — Consume the context (`useContext`)
 
@@ -1265,3 +1268,154 @@ In a large app, encapsulation means:
 - **Bugs are localized** — you can trace any state issue back to the component that owns it.
 - **Changes are safe** — modifying `Cart`'s rendering logic can't accidentally break `Order`'s state.
 - **Components are replaceable** — you can swap out `Cart` for a completely different implementation, and as long as it accepts the same props, `Order` doesn't care.
+
+---
+
+## TanStack Router — File-Based Routing, `__root.jsx`, `<Outlet/>`, and Lazy Loading
+
+### What is TanStack Router?
+
+TanStack Router is a type-safe, file-based router for React. Instead of manually defining routes in a config file, you create files inside a `src/routes/` directory and the router plugin automatically generates a route tree for you.
+
+### How it works end-to-end
+
+1. **Vite plugin** — In `vite.config.js`, we add `TanStackRouterVite()`. This plugin watches `src/routes/` and auto-generates `src/routeTree.gen.ts` whenever files change.
+
+2. **Route tree** — `routeTree.gen.ts` is an auto-generated file that maps file paths to route definitions. You never edit this file manually.
+
+3. **Router creation** — In `App.jsx`, we create the router and provide it to the app:
+
+```jsx
+import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { routeTree } from "./routeTree.gen";
+
+const router = createRouter({ routeTree });
+
+const App = () => (
+    <StrictMode>
+        <RouterProvider router={router} />
+    </StrictMode>
+);
+```
+
+`RouterProvider` replaces your old top-level component tree — the router now decides what to render based on the URL.
+
+### What is `__root.jsx`?
+
+`__root.jsx` is the **root layout** — it wraps every page in your app. Think of it as the shell that always stays on screen (header, footer, navigation, providers) while the inner content changes based on the URL.
+
+```jsx
+// src/routes/__root.jsx
+import { useState } from "react";
+import { Outlet, createRootRoute } from "@tanstack/react-router";
+import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+import Header from "../Header";
+import PizzaOfTheDay from "../PizzaOfTheDay";
+import { CartContext } from "../contexts";
+
+function RootComponent() {
+    const cartHook = useState([]);
+    return (
+        <>
+            <CartContext.Provider value={cartHook}>
+                <div>
+                    <Header />
+                    <Outlet />
+                    <PizzaOfTheDay />
+                </div>
+            </CartContext.Provider>
+            <TanStackRouterDevtools />
+        </>
+    );
+}
+
+export const Route = createRootRoute({
+    component: RootComponent,
+});
+```
+
+**Why the double underscore?** The `__root` naming is a TanStack Router convention — it tells the plugin "this is the root layout, not a regular route." It does not map to a URL path.
+
+**Why a named function instead of an inline arrow?** With TanStack Router, we moved the `CartContext.Provider` into `__root.jsx` (since it's now the top-level layout). The Provider needs `useState` to create the cart state — but **React hooks cannot be called inside an inline arrow function** passed to `createRootRoute`. Hooks must be called inside a proper React component function. So we extract the arrow into a named `RootComponent` function:
+
+```jsx
+// ❌ BAD — hooks can't be used in an inline callback
+export const Route = createRootRoute({
+    component: () => {
+        const cartHook = useState([]); // THIS BREAKS — not a component function
+        return <CartContext.Provider value={cartHook}>...</CartContext.Provider>;
+    },
+});
+
+// ✅ GOOD — hooks work inside a named component function
+function RootComponent() {
+    const cartHook = useState([]); // works — this is a proper component
+    return <CartContext.Provider value={cartHook}>...</CartContext.Provider>;
+}
+
+export const Route = createRootRoute({
+    component: RootComponent, // pass the component by reference
+});
+```
+
+The key insight: `createRootRoute({ component: ... })` expects a **React component** (a function React manages and tracks hooks for). An inline arrow function passed directly is technically a component, but React can struggle to track it properly — and more importantly, if you forget to define state inside it (like we did with `cartHook`), you get a `ReferenceError`. Using a named function makes the code clearer and avoids these pitfalls.
+
+### Where the CartContext.Provider lives now
+
+Before TanStack Router, the Provider was in `App.jsx` wrapping the component tree. Now that TanStack Router owns the component tree (via `RouterProvider`), the root layout (`__root.jsx`) is the right place for app-wide providers like `CartContext.Provider`. The `App.jsx` is now just the router setup:
+
+```jsx
+// App.jsx — slim, just sets up the router
+const router = createRouter({ routeTree });
+
+const App = () => (
+    <StrictMode>
+        <RouterProvider router={router} />
+    </StrictMode>
+);
+```
+
+All layout, providers, and shared UI live in `__root.jsx` instead.
+
+### What does `<Outlet/>` do?
+
+`<Outlet/>` is a placeholder that renders the **matched child route's component**. It's the slot where page content appears.
+
+- URL is `/` → `<Outlet/>` renders the index route component
+- URL is `/order` → `<Outlet/>` renders the Order component
+- Header and PizzaOfTheDay stay the same — only the `<Outlet/>` content swaps
+
+This is the same concept as a "slot" in other frameworks. The root layout says "put the page content here."
+
+### Lazy Loading with `.lazy.jsx`
+
+When you name a route file `order.lazy.jsx`, TanStack Router will **lazy load** that route — the code for the Order page is only downloaded when the user navigates to `/order`, not on the initial page load.
+
+```
+src/routes/
+├── __root.jsx          ← always loaded (the layout shell)
+└── order.lazy.jsx      ← only loaded when user visits /order
+```
+
+**Why lazy load?** For performance. If your app has 20 pages, you don't want the browser to download all 20 pages worth of JavaScript upfront. Lazy loading splits each route into its own chunk, so users only download what they need.
+
+**How it works under the hood:**
+- The Vite plugin sees `.lazy.jsx` and generates code that uses dynamic `import()` instead of static `import`
+- Dynamic `import()` tells the bundler (Vite) to create a separate JS file for that route
+- When the user navigates to that route, the browser fetches that separate file on demand
+- TanStack Router handles the loading state automatically
+
+**Non-lazy vs lazy:**
+- `order.jsx` — bundled into the main JS file, loaded immediately
+- `order.lazy.jsx` — split into a separate chunk, loaded on navigation
+
+### TanStack Router DevTools
+
+```jsx
+import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+
+// Inside your root layout:
+<TanStackRouterDevtools />
+```
+
+This adds a floating panel in development that shows you the current route state, params, search params, and route tree. It's automatically excluded from production builds.
